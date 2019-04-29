@@ -184,3 +184,76 @@ EXCEPTION
   dbms_output.put_line('没找到数据');
 END;
 /
+-- 4，声明类型
+SET serveroutput ON;
+-- 声明某列类型
+DECLARE
+  v_ename emp.ename%TYPE;
+  v_empno emp.empno%TYPE;
+BEGIN
+  v_empno:=&eno;
+  SELECT ename INTO v_ename FROM emp WHERE empno = v_empno;
+  -- 多个列值可以这样写：select ename,deptno into v_ename,v_deptno from emp;
+  dbms_output.put_line('编号为：'||v_empno||' 的雇员名字为：'||v_ename);
+END;
+/
+--- 声明为行类型 ROWTYPE
+DECLARE
+  v_emp emp%ROWTYPE;
+BEGIN
+  SELECT * INTO v_emp FROM emp WHERE empno=7369;
+  dbms_output.put_line(v_emp.empno||': '||v_emp.ename);
+END;
+/
+-- 流程控制
+SET serveroutput ON;
+DECLARE
+  v_count NUMBER(4);
+BEGIN
+  SELECT COUNT(empno) INTO v_count FROM emp;
+  IF v_count > 10 THEN
+    dbms_output.put_line('城里人太多');
+  END IF;
+  IF 'java'='java' THEN
+    dbms_output.put_line('helloworld');
+  END IF;
+END;
+/
+-- 循环
+DECLARE
+  v_num NUMBER;
+BEGIN
+  v_num := 10;
+  LOOP
+  --因为少了个分号;找了半天弄不好
+    dbms_output.put_line(v_num);
+    EXIT
+  WHEN v_num <= 0;
+    v_num  := v_num - 1;
+  END LOOP;
+END;
+/
+
+DECLARE 
+  v_i NUMBER := 10;
+BEGIN
+  while(v_i>0) 
+  
+  loop
+    dbms_output.put_line(v_i);
+    v_i := v_i - 1;
+  end loop;
+END;
+/
+
+-- for 使用
+
+DECLARE 
+  v_i NUMBER ;
+BEGIN
+  FOR v_i IN 1 .. 3 
+  loop
+    dbms_output.put_line(' '||v_i);
+  end loop;
+END;
+/
