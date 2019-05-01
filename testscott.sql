@@ -257,3 +257,116 @@ BEGIN
   end loop;
 END;
 /
+
+-- 异常处理
+set serveroutput on;
+-- 1 声明exception对象
+
+-- 1.1 引用声明的exception对象 使用others捕获，此时oracle错误代码为1
+DECLARE
+  v_empno NUMBER;
+  v_myexception exception; 
+  
+BEGIN
+  v_empno := &eno;
+  IF v_empno>=1 AND v_empno<=10000 THEN
+    dbms_output.put_line('进入错误输入代码块');
+    raise v_myexception;
+  END IF;
+exception
+  WHEN others THEN
+       dbms_output.put_line('错误输入');
+       dbms_output.put_line('sqlcode: '||SQLCODE);
+       dbms_output.put_line('sqlerrm '||SQLERRM);
+END;
+/
+
+-- 1.2 将声明的对象与有效的oracle错误代码联系起来
+DECLARE
+  v_empno NUMBER;
+  v_myexception exception;
+  pragma exception_int(v_myexcption,-20789);
+BEGIN
+  v_empno:=&eno;
+  IF v_empno>=0 AND v_empno<=11110 THEN
+    dbms_output.put_line('进入异常代码块');
+    raise v_myexception;
+exception
+  when v_myexception then
+    dbms_output.put_line('错误输入');
+    dbms_output.put_line('sqlcode: '||sqlcode);
+    dbms_output.put_line('sqlerrm: '||sqlerrm);
+END;
+/
+
+
+
+
+-- 2 使用 raise_appliaction_error构建错动态的异常 raise_application_error(错误号，错误信息，是否添加到错误栈中);
+
+
+
+
+------------------end PL/SQL编程------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
