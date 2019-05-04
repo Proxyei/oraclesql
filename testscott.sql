@@ -285,12 +285,14 @@ END;
 DECLARE
   v_empno NUMBER;
   v_myexception exception;
-  pragma exception_int(v_myexcption,-20789);
+  PRAGMA exception_init(v_myexception,-20789);
 BEGIN
   v_empno:=&eno;
   IF v_empno>=0 AND v_empno<=11110 THEN
     dbms_output.put_line('进入异常代码块');
     raise v_myexception;
+  END IF;
+  
 exception
   when v_myexception then
     dbms_output.put_line('错误输入');
@@ -299,11 +301,45 @@ exception
 END;
 /
 
-
+DECLARE 
+  v_data NUMBER;
+  v_myexp exception;
+  pragma exception_init (v_myexp, -20789);
+BEGIN
+  v_data := &inputData;
+  IF v_data>0 AND v_data<100 THEN
+    raise v_myexp;
+  END IF;
+  
+exception
+  WHEN v_myexp THEN
+  dbms_output.put_line('输入错误');
+  dbms_output.put_line('sqlcode'||sqlcode);
+  dbms_output.put_line('sqlerrm'||sqlerrm);
+END;
+/
 
 
 -- 2 使用 raise_appliaction_error构建错动态的异常 raise_application_error(错误号，错误信息，是否添加到错误栈中);
-
+DECLARE
+  v_empno NUMBER;
+  v_ename VARCHAR2(20);
+  v_exception exception;
+  pragma exception_init (v_exception, -20001);
+BEGIN
+  v_empno :=&inputData;
+  SELECT ename INTO v_ename FROM emp WHERE empno=v_empno;
+  IF v_ename='SMITH' THEN
+    dbms_output.put_line('进入错误代码块');
+    raise_application_error(-20001, '找到了错误的员工');
+  end if;
+exception
+  WHEN v_exception THEN
+    dbms_output.put_line('爆出一个亿异常');
+    dbms_output.put_line('sqlcode'||sqlcode);
+    dbms_output.put_line('sqlerrm'||sqlerrm);
+END;
+/
 
 
 
@@ -312,26 +348,285 @@ END;
 
 
 
+---------start 集合----------------掌握如何遍历多行记录-
+-- type is record 定义一个j记录类型，类型C的结构体
+set serveroutput on;
+DECLARE 
+  TYPE empType Is record(
+    empno emp.empno%type,
+    ename emp.ename%TYPE,
+    empjob emp.job%type
+  );
+  emprow empType;
+  v_empno number;
+BEGIN
+  v_empno:=&eno;
+  SELECT empno,ename,JOB INTO emprow FROM emp WHERE empno=v_empno;
+  -- 不能只有emprow
+  dbms_output.put_line(emprow.empno||emprow.ename||emprow.empjob);
+  exception
+    WHEN others THEN
+      dbms_output.put_line('no datas');
+END;
+/
+
+
+---2 嵌套类型记录类型
+DECLARE
+  
+BEGIN
+END;
+/
+
+
+-- 3索引
+set serveroutput on;
+
+-- 数字下标
+
+DECLARE 
+  TYPE v_type IS TABLE OF VARCHAR(21) INDEX BY pls_integer;
+  v1 v_type;
+  
+BEGIN
+  v1(0) :='java';
+  v1(11):='c';
+  dbms_output.put_line(v1(0));
+  dbms_output.put_line(v1(11));
+END;
+/
+
+-- 字符串下标
+DECLARE 
+  TYPE v_string IS TABLE OF VARCHAR2(30) INDEX BY VARCHAR2(20);
+  v1 v_string;
+BEGIN
+  v1('a'):='hello';
+  v1('b'):='world';
+  dbms_output.put_line(v1('a'));
+  dbms_output.put_line(v1('b'));
+END;
+/
+
+-- 记录类型
+DECLARE
+  TYPE v_dept_type IS TABLE OF dept%rowtype INDEX BY pls_integer;
+  v1 v_dept_type;
+BEGIN
+  v1(0).deptno:=22;
+  v1(0).dname :='java';
+  v1(0).loc:='hh';
+  dbms_output.put_line(v1(0).deptno||v1(0).dname||v1(0).loc);
+END;
+/
+
+select * from dept;
+
+show ERROR;
 
 
 
+/* start 游标 */
+set serveroutput on;
+-- 查询出emp所有员工的信息
+-- while
+DECLARE 
+  CURSOR cursor_emp IS SELECT * FROM emp;
+  --结果集
+  v_emprow emp%rowtype;
+BEGIN
+-- 判断游标状态 打开游标
+  IF cursor_emp%ISOPEN THEN
+    NULL;
+  ELSE
+    open cursor_emp;
+  END IF;
+  fetch cursor_emp INTO v_emprow;
+  while  cursor_emp%found loop
+      dbms_output.put_line('row: '||cursor_emp%rowcount||' empno:'||v_emprow.empno||' ename:'||v_emprow.ename||' job:'||v_emprow.JOB||' sal:'||v_emprow.sal);
+      fetch cursor_emp into v_emprow;-- 指向下一条记录
+    end loop;  
+  IF cursor_emp%isopen THEN
+    close cursor_emp;
+  end if;
+END;
+/
+
+-- 使用loop
+DECLARE 
+  CURSOR cursor_emp IS SELECT * FROM emp; --显示声明游标
+  v_emprow emp%rowtype; -- 取得行
+BEGIN
+  -- 打开游标
+  IF cursor_emp%isopen THEN
+    NULL;
+  ELSE
+    open cursor_emp;
+  END IF;
+  
+  fetch cursor_emp INTO v_emprow;--游标指向第一行
+    loop
+      dbms_output.put_line('row: '||cursor_emp%rowcount||' empno:'||v_emprow.empno||' ename:'||v_emprow.ename||' job:'||v_emprow.JOB||' sal:'||v_emprow.sal);
+      exit WHEN cursor_emp%notfound;
+        fetch cursor_emp INTO v_emprow;--游标指向下一行
+    end loop;
+  
+  close cursor_emp;
+END;
+/
+
+-- for 主要使用for，系统会自动打开关闭cursor
+DECLARE
+  CURSOR cursor_emp IS SELECT * FROM emp;  
+BEGIN
+  -- 不用声明变量类型也可以用
+  FOR v_emprow IN cursor_emp
+    loop
+      dbms_output.put_line('row: '||cursor_emp%rowcount||' empno:'||v_emprow.empno||' ename:'||v_emprow.ename||' job:'||v_emprow.JOB||' sal:'||v_emprow.sal);
+    end loop;
+END;
+/
+show error;
+
+-- 带参数的游标 查询出部门为10的所有员工信息*/
+DECLARE
+   CURSOR cursor_emp (cs_deptno emp.deptno%TYPE) IS SELECT * FROM emp where deptno=cs_deptno;
+   v_deptno emp.deptno%TYPE;
+   v_ename emp.ename%type;
+BEGIN
+  FOR v_emprow IN cursor_emp(&deptno) 
+    loop
+       --dbms_output.put_line('名字'||v_ename);
+        dbms_output.put_line('row: '||cursor_emp%rowcount||' empno:'||v_emprow.empno||' ename:'||v_emprow.ename||' job:'||v_emprow.JOB||' sal:'||v_emprow.sal);
+    end loop;
+END;
+/
 
 
+/*游标 end*/
 
 
+--------end--------
 
 
+---触发器start-------
 
 
+--dml触发器
+--表级触发器
+CREATE OR REPLACE TRIGGER trigger_myemp
+BEFORE INSERT OR UPDATE OR DELETE
+ON myemp
+DECLARE 
+  val_nowdate VARCHAR2(10);
+BEGIN
+  SELECT to_char(SYSDATE,'dd') INTO val_nowdate FROM dual;
+  IF val_nowdate !='10' THEN
+    raise_application_error(-20008,'只能10号更新emp表');
+  END IF;
+  
+END;
+/
+show error;
+select * from myemp;
+insert into myemp values(1111,'name','job',7369,sysdate,800,10,20);
+
+-- 行级触发器
+CREATE OR REPLACE TRIGGER trigger_myemp2
+BEFORE INSERT OR UPDATE OR DELETE 
+ON myemp
+FOR EACH ROW
+DECLARE
+  v_jobCount NUMBER;
+BEGIN
+  SELECT count(empno) INTO v_jobCount FROM myemp WHERE :NEW.JOB IN (SELECT DISTINCT JOB FROM myemp);
+  IF v_jobCount<=0 THEN
+    raise_application_error(-20008,'没有找到相关职位');
+  ELSIF :NEW.sal>500 THEN
+    raise_application_error(-20008,'非法数据');
+  END IF; 
+END;
+/
+DROP TRIGGER trigger_myemp;
+insert into myemp values(1111,'name','CLERK',7369,sysdate,800,10,20);
+
+--具体到一个字段 雇员涨工资幅度不能超过10%
+CREATE OR REPLACE trigger tg_myemp_sal
+BEFORE UPDATE OF sal 
+ON myemp
+FOR EACH ROW
+BEGIN
+  IF ((:NEW.sal-:OLD.sal)/:OLD.sal)>0.1 THEN
+    raise_application_error(-20008,'涨幅太大');
+  END IF;
+END;
+/
+UPDATE myemp SET sal=10000 WHERE empno=7369;
+show error;
 
 
+-- 存储过程--
+-- 无参数 
+CREATE or replace PROCEDURE  p_helloworld AS 
+BEGIN 
+  dbms_output.put_line('helloworld!');
+END;
+/
+exec p_helloworld;
 
+-- 有参数 in可以省略，out必须写
+--  疑问，如何输出多行记录
+-- create or replace procedure p_findEnameByEmpNO(p_empno in number, p_ename out varchar2)
+ create or replace procedure p_findEnameByEmpNO(p_empno in emp.empno%type, p_ename out emp.ename%type)
+AS 
+BEGIN
+  SELECT ename INTO p_ename FROM emp WHERE empno=p_empno ;
+END;
+/
+ 
+DECLARE 
+  v_ename emp.ename%TYPE;
+  v_empno emp.empno%type;
+BEGIN
+  v_empno := &empno;
+  p_findEnameByEmpNO(v_empno,v_ename);
+  dbms_output.put_line(v_ename);
+END;
+/
 
+-- 存储函数
 
+-- 输入empno查询改员工的薪水
+-- 
+create or replace function getSalByEmpNO(func_empno in number )
+RETURN NUMBER
+AS func_sal NUMBER;
+BEGIN
+  SELECT sal INTO func_sal from emp WHERE empno=func_empno;
+  return func_sal;
+END;
+/
 
+select getsalbyempno(7369) from dual;
 
+--存储函数返回多个值情况
 
+CREATE OR REPLACE FUNCTION getEmpnameSalByID(func_empno IN NUMBER,func_sal out NUMBER) RETURN VARCHAR2
+AS func_empname emp.ename%type;
+BEGIN
+  SELECT ename,sal INTO func_empname,func_sal FROM emp WHERE empno=func_empno;
+  RETURN func_empname;
+END;
+/
 
+DECLARE 
+  v_empname emp.ename%TYPE;
+  v_sal emp.sal%TYPE;
+BEGIN
+  v_empname:=getEmpnameSalByID(&empno,v_sal);
+  dbms_output.put_line(v_empname||'月薪'||v_sal);
+END;
+/
 
 
 
